@@ -8,7 +8,9 @@ async function main() {
   const password = process.env.ADMIN_PASSWORD;
 
   if (!phone || !password) {
-    throw new Error('ADMIN_PHONE and ADMIN_PASSWORD must be set before seeding.');
+    throw new Error(
+      'ADMIN_PHONE and ADMIN_PASSWORD must be set before seeding.',
+    );
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
@@ -20,5 +22,4 @@ async function main() {
   });
 }
 
-main()
-  .finally(async () => prisma.$disconnect());
+main().finally(async () => prisma.$disconnect());

@@ -14,7 +14,11 @@ export class AuthService {
   async login(phone: string, password: string) {
     const user = await this.prisma.user.findUnique({ where: { phone } });
 
-    if (!user || user.role !== Role.ADMIN || !(await bcrypt.compare(password, user.passwordHash))) {
+    if (
+      !user ||
+      user.role !== Role.ADMIN ||
+      !(await bcrypt.compare(password, user.passwordHash))
+    ) {
       throw new UnauthorizedException('Invalid phone number or password.');
     }
 
@@ -26,10 +30,14 @@ export class AuthService {
 
   async getAdminFromToken(token: string) {
     try {
-      const payload = await this.jwt.verifyAsync<{ sub: string; role: Role }>(token);
+      const payload = await this.jwt.verifyAsync<{ sub: string; role: Role }>(
+        token,
+      );
       if (payload.role !== Role.ADMIN) throw new UnauthorizedException();
 
-      const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+      });
       if (!user || user.role !== Role.ADMIN) throw new UnauthorizedException();
       return { id: user.id, phone: user.phone, role: user.role };
     } catch {
