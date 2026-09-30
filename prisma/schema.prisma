@@ -18,6 +18,9 @@ enum Role {
 
 model User {
   id           String   @id @default(cuid())
+  // Global, system-assigned identifier for every role. The database sequence
+  // and default make allocation safe across concurrent user creation flows.
+  customUserId String   @unique @default(dbgenerated("next_custom_user_id()"))
   // Assigned automatically to STUDENT users, e.g. GSM-00000001. Nullable
   // because non-student accounts do not have a student identifier.
   studentId    String?  @unique

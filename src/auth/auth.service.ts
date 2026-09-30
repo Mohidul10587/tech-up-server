@@ -113,6 +113,7 @@ export class AuthService {
 
     return {
       id: user.id,
+      customUserId: user.customUserId,
       studentId: user.studentId,
       phone: user.phone,
       role: user.role,
@@ -146,6 +147,7 @@ export class AuthService {
    */
   private static readonly LIST_SELECT = {
     id: true,
+    customUserId: true,
     studentId: true,
     phone: true,
     role: true,
