@@ -18,12 +18,12 @@ enum Role {
 
 model User {
   id           String   @id @default(cuid())
-  // Global, system-assigned identifier for every role. The database sequence
-  // and default make allocation safe across concurrent user creation flows.
+  // The single, global, system-assigned identifier for every role, formatted
+  // as GSM-001, GSM-002, ... It expands past 999 (GSM-1000, GSM-10001, ...) and
+  // is never typed by a user. The database sequence plus this default make
+  // allocation safe under concurrent user creation, and the @unique constraint
+  // is a final guard against duplicates.
   customUserId String   @unique @default(dbgenerated("next_custom_user_id()"))
-  // Assigned automatically to STUDENT users, e.g. GSM-00000001. Nullable
-  // because non-student accounts do not have a student identifier.
-  studentId    String?  @unique
   phone        String   @unique
   passwordHash String
   role         Role     @default(CUSTOMER)

@@ -85,36 +85,21 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(phone, 10);
-    const user = await this.prisma.$transaction(async (transaction) => {
-      // Serialise ID allocation. Without this lock, two simultaneous creates
-      // could both read the same latest sequence and receive the same ID.
-      await transaction.$executeRaw`SELECT pg_advisory_xact_lock(73492016)`;
-
-      const latestStudent = await transaction.user.findFirst({
-        where: { role: Role.STUDENT, studentId: { not: null } },
-        select: { studentId: true },
-        orderBy: { studentId: 'desc' },
-      });
-      const latestSequence = Number(
-        latestStudent?.studentId?.replace('GSM-', '') ?? 0,
-      );
-      const studentId = `GSM-${String(latestSequence + 1).padStart(8, '0')}`;
-
-      return transaction.user.create({
-        data: {
-          phone,
-          passwordHash,
-          role: Role.STUDENT,
-          studentId,
-          ...profile,
-        },
-      });
+    // `customUserId` is intentionally omitted: PostgreSQL fills it from the one
+    // global sequence via the column default, so concurrent creates can never
+    // collide and no read-then-write race exists.
+    const user = await this.prisma.user.create({
+      data: {
+        phone,
+        passwordHash,
+        role: Role.STUDENT,
+        ...profile,
+      },
     });
 
     return {
       id: user.id,
       customUserId: user.customUserId,
-      studentId: user.studentId,
       phone: user.phone,
       role: user.role,
       batchNo: user.batchNo,
@@ -148,7 +133,6 @@ export class AuthService {
   private static readonly LIST_SELECT = {
     id: true,
     customUserId: true,
-    studentId: true,
     phone: true,
     role: true,
     createdAt: true,
