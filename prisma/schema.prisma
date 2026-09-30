@@ -10,6 +10,7 @@ datasource db {
 enum Role {
   ADMIN
   CUSTOMER
+  STUDENT
   SHOP_MANAGER
   WAREHOUSE_MANAGER
   TRAINING_CENTER_MANAGER
@@ -17,11 +18,56 @@ enum Role {
 
 model User {
   id           String   @id @default(cuid())
+  // Assigned automatically to STUDENT users, e.g. GSM-00000001. Nullable
+  // because non-student accounts do not have a student identifier.
+  studentId    String?  @unique
   phone        String   @unique
   passwordHash String
   role         Role     @default(CUSTOMER)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  // --- Student Information ---
+  // `fullName` is the student's own name; it is the second field collected during
+  // registration, right after the batch number.
+  fullName         String?
+  // Nullable because only students have a course. Values are constrained by a
+  // database CHECK and the student DTO, while existing users remain NULL.
+  courseName       String?
+  batchNo          String?
+  fatherName       String?
+  motherName       String?
+  presentAddress   String?
+  permanentAddress String?
+  occupation       String?
+
+  // --- Contact Details ---
+  // `phone` above is the student's own number (and doubles as the password);
+  // `guardianPhone` is the parent/guardian's number. `email` is optional.
+  guardianPhone    String?
+  email            String?
+
+  // --- Student Identification ---
+  // At least one of nidNumber / birthRegistrationNumber is required for
+  // students. The constraint is enforced at the DTO/service layer because a
+  // database CHECK cannot be conditional on `role`.
+  nidNumber               String?
+  birthRegistrationNumber String?
+
+  // --- Student Photo & Documents ---
+  studentPhoto          String?
+  studentNidFrontImage  String?
+  studentNidBackImage   String?
+  guardianNidFrontImage String?
+  guardianNidBackImage  String?
+
+  @@index([nidNumber])
+  @@index([birthRegistrationNumber])
+  @@index([batchNo])
+  @@index([fullName])
+  @@index([guardianPhone])
+  @@index([email])
+  @@index([role])
 }
 
 model Setting {

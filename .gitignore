@@ -1,5 +1,8 @@
 # compiled output
 /dist
+
+# user-uploaded student photos / NID images (runtime data, never committed)
+/uploads
 /node_modules
 /build
 

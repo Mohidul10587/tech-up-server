@@ -3,6 +3,10 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import {
+  AtLeastOneIdentifierConstraint,
+  StringOrUndefinedConstraint,
+} from './dto/student-profile.dto';
 
 @Module({
   imports: [
@@ -15,6 +19,12 @@ import { AuthService } from './auth.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [
+    AuthService,
+    AtLeastOneIdentifierConstraint,
+    StringOrUndefinedConstraint,
+  ],
+  // Exported so UploadModule can reuse the admin guard for its endpoints.
+  exports: [AuthService],
 })
 export class AuthModule {}
