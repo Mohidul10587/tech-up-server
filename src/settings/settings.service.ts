@@ -1,27 +1,40 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { UpdateSettingsDto } from './dto/update-settings.dto';
 
-export interface SettingsMap {
-  [key: string]: string;
-}
+const SINGLETON_ID = 'singleton';
 
 @Injectable()
 export class SettingsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(): Promise<SettingsMap> {
-    const rows = await this.prisma.setting.findMany();
-    return rows.reduce<SettingsMap>((acc, row) => {
-      acc[row.key] = row.value;
-      return acc;
-    }, {});
+  /** Returns the single settings row, or an empty object if not yet created. */
+  async get() {
+    const row = await this.prisma.setting.findUnique({
+      where: { id: SINGLETON_ID },
+    });
+    return row ?? { id: SINGLETON_ID };
   }
 
-  async upsert(key: string, value: string) {
+  /** Creates or fully updates the singleton settings row. */
+  async update(dto: UpdateSettingsDto) {
     return this.prisma.setting.upsert({
-      where: { key },
-      update: { value },
-      create: { key, value },
+      where: { id: SINGLETON_ID },
+      update: {
+        address: dto.address ?? null,
+        phone: dto.phone ?? null,
+        email: dto.email ?? null,
+        courseFeesMobileRepairing: dto.courseFeesMobileRepairing ?? null,
+        courseFeesEnglishSpeaking: dto.courseFeesEnglishSpeaking ?? null,
+      },
+      create: {
+        id: SINGLETON_ID,
+        address: dto.address ?? null,
+        phone: dto.phone ?? null,
+        email: dto.email ?? null,
+        courseFeesMobileRepairing: dto.courseFeesMobileRepairing ?? null,
+        courseFeesEnglishSpeaking: dto.courseFeesEnglishSpeaking ?? null,
+      },
     });
   }
 }

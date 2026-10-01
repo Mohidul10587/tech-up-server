@@ -15,12 +15,14 @@ import {
   UPDATABLE_STUDENT_FIELDS,
   UpdateStudentDto,
 } from './dto/update-student.dto';
+import { SettingsService } from '../settings/settings.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly settings: SettingsService,
   ) {}
 
   async login(phone: string, password: string) {
@@ -88,11 +90,27 @@ export class AuthService {
     // `customUserId` is intentionally omitted: PostgreSQL fills it from the one
     // global sequence via the column default, so concurrent creates can never
     // collide and no read-then-write race exists.
+
+    // Snapshot the current course fee from settings so that a later fee change
+    // does not silently alter this student's due balance.
+    let courseFee: number | undefined;
+    if (profile.courseName) {
+      const settings = await this.settings.get();
+      if ('courseFeesMobileRepairing' in settings) {
+        if (profile.courseName === 'Mobile Repairing' && settings.courseFeesMobileRepairing) {
+          courseFee = settings.courseFeesMobileRepairing;
+        } else if (profile.courseName === 'English Speaking' && settings.courseFeesEnglishSpeaking) {
+          courseFee = settings.courseFeesEnglishSpeaking;
+        }
+      }
+    }
+
     const user = await this.prisma.user.create({
       data: {
         phone,
         passwordHash,
         role: Role.STUDENT,
+        ...(courseFee !== undefined ? { courseFee } : {}),
         ...profile,
       },
     });
@@ -105,6 +123,7 @@ export class AuthService {
       batchNo: user.batchNo,
       fullName: user.fullName,
       courseName: user.courseName,
+      courseFee: user.courseFee,
       fatherName: user.fatherName,
       motherName: user.motherName,
       presentAddress: user.presentAddress,
@@ -139,6 +158,7 @@ export class AuthService {
     batchNo: true,
     fullName: true,
     courseName: true,
+    courseFee: true,
     fatherName: true,
     motherName: true,
     presentAddress: true,
@@ -155,13 +175,21 @@ export class AuthService {
     guardianNidBackImage: true,
   } as const;
 
-  /** All students, newest first. */
+  /** All students, newest first — includes totalPaid aggregated from payments. */
   async listStudents() {
-    return this.prisma.user.findMany({
+    const students = await this.prisma.user.findMany({
       where: { role: Role.STUDENT },
-      select: AuthService.LIST_SELECT,
+      select: {
+        ...AuthService.LIST_SELECT,
+        payments: { select: { amount: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
+
+    return students.map(({ payments, ...s }) => ({
+      ...s,
+      totalPaid: payments.reduce((sum, p) => sum + p.amount, 0),
+    }));
   }
 
   /**

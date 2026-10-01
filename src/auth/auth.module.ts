@@ -7,6 +7,7 @@ import {
   AtLeastOneIdentifierConstraint,
   StringOrUndefinedConstraint,
 } from './dto/student-profile.dto';
+import { SettingsModule } from '../settings/settings.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import {
         signOptions: { expiresIn: '8h' },
       }),
     }),
+    SettingsModule,
   ],
   controllers: [AuthController],
   providers: [
@@ -24,7 +26,6 @@ import {
     AtLeastOneIdentifierConstraint,
     StringOrUndefinedConstraint,
   ],
-  // Exported so UploadModule can reuse the admin guard for its endpoints.
   exports: [AuthService],
 })
 export class AuthModule {}

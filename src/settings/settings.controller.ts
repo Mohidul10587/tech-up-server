@@ -1,18 +1,18 @@
 import { Body, Controller, Get, Put } from '@nestjs/common';
 import { SettingsService } from './settings.service';
-import { UpsertSettingDto } from './dto/upsert-setting.dto';
+import { UpdateSettingsDto } from './dto/update-settings.dto';
 
 @Controller('settings')
 export class SettingsController {
   constructor(private readonly settings: SettingsService) {}
 
   @Get()
-  findAll() {
-    return this.settings.findAll();
+  get() {
+    return this.settings.get();
   }
 
   @Put()
-  upsert(@Body() dto: UpsertSettingDto) {
-    return this.settings.upsert(dto.key, dto.value);
+  update(@Body() dto: UpdateSettingsDto) {
+    return this.settings.update(dto);
   }
 }
