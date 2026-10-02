@@ -18,12 +18,10 @@ enum Role {
 
 model User {
   id           String   @id @default(cuid())
-  // The single, global, system-assigned identifier for every role, formatted
-  // as GSM-001, GSM-002, ... It expands past 999 (GSM-1000, GSM-10001, ...) and
-  // is never typed by a user. The database sequence plus this default make
-  // allocation safe under concurrent user creation, and the @unique constraint
-  // is a final guard against duplicates.
-  customUserId String   @unique @default(dbgenerated("next_custom_user_id()"))
+  // Student-only auto-assigned identifier: {batchNo}{serial}, e.g. 301, 302, 1001.
+  // NULL for non-student roles. Generated in application code (not a DB sequence)
+  // so it can embed the batch number.
+  studentId    String?  @unique
   phone        String   @unique
   passwordHash String
   role         Role     @default(CUSTOMER)
@@ -74,6 +72,7 @@ model User {
   @@index([nidNumber])
   @@index([birthRegistrationNumber])
   @@index([batchNo])
+  @@index([studentId])
   @@index([fullName])
   @@index([guardianPhone])
   @@index([email])
@@ -88,6 +87,14 @@ model Setting {
   // Course fees in taka. Snapshotted onto the student at enrolment time.
   courseFeesMobileRepairing Int?
   courseFeesEnglishSpeaking Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Batch {
+  id        String   @id @default(cuid())
+  /// The batch identifier shown to users, e.g. "1", "2", "10". Must be unique.
+  name      String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

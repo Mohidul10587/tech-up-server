@@ -37,8 +37,8 @@ export class AuthService {
     }
 
     return {
-      accessToken: await this.jwt.signAsync({ sub: user.id, role: user.role }),
-      user: { id: user.id, phone: user.phone, role: user.role },
+      accessToken: await this.jwt.signAsync({ sub: user.id, role: user.role, name: user.fullName ?? user.phone }),
+      user: { id: user.id, phone: user.phone, role: user.role, name: user.fullName ?? user.phone },
     };
   }
 
@@ -87,9 +87,6 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(phone, 10);
-    // `customUserId` is intentionally omitted: PostgreSQL fills it from the one
-    // global sequence via the column default, so concurrent creates can never
-    // collide and no read-then-write race exists.
 
     // Snapshot the current course fee from settings so that a later fee change
     // does not silently alter this student's due balance.
@@ -105,19 +102,113 @@ export class AuthService {
       }
     }
 
+    // Generate studentId: {batchNo}-{serial}, e.g. 5-01, 5-02, 10-01, 10-02.
+    // Serial is per-batch, starting at 01. If no batchNo, studentId stays null.
+    let studentId: string | undefined;
+    const batchNo = profile.batchNo;
+    if (batchNo) {
+      // Find the highest existing serial for this batch.
+      // All studentIds that start with "{batchNo}-" are considered.
+      const prefix = `${batchNo}-`;
+      const existing = await this.prisma.user.findMany({
+        where: {
+          role: Role.STUDENT,
+          studentId: { startsWith: prefix },
+        },
+        select: { studentId: true },
+      });
+
+      // Extract the numeric suffix (the serial part after "{batchNo}-").
+      let maxSerial = 0;
+      for (const row of existing) {
+        if (!row.studentId) continue;
+        const suffix = row.studentId.slice(prefix.length);
+        const n = parseInt(suffix, 10);
+        if (!isNaN(n) && n > maxSerial) maxSerial = n;
+      }
+
+      const nextSerial = maxSerial + 1;
+      // Pad serial to at least 2 digits: 01, 02, … 09, 10, 11, … 100, 101
+      const serialStr = nextSerial < 10 ? `0${nextSerial}` : `${nextSerial}`;
+      studentId = `${prefix}${serialStr}`;
+    }
+
     const user = await this.prisma.user.create({
       data: {
         phone,
         passwordHash,
         role: Role.STUDENT,
+        ...(studentId !== undefined ? { studentId } : {}),
         ...(courseFee !== undefined ? { courseFee } : {}),
         ...profile,
       },
     });
 
+    return this.formatStudent(user);
+  }
+
+  /**
+   * Shared projection for list endpoints.
+   *
+   * `passwordHash` is NEVER selected - returning it would leak every account's
+   * credentials to the admin panel and into any client bundle that renders the
+   * response. Fields are listed explicitly rather than spreading the row.
+   */
+  private static readonly LIST_SELECT = {
+    id: true,
+    studentId: true,
+    phone: true,
+    role: true,
+    createdAt: true,
+    batchNo: true,
+    fullName: true,
+    courseName: true,
+    courseFee: true,
+    fatherName: true,
+    motherName: true,
+    presentAddress: true,
+    permanentAddress: true,
+    occupation: true,
+    guardianPhone: true,
+    email: true,
+    nidNumber: true,
+    birthRegistrationNumber: true,
+    studentPhoto: true,
+    studentNidFrontImage: true,
+    studentNidBackImage: true,
+    guardianNidFrontImage: true,
+    guardianNidBackImage: true,
+  } as const;
+
+  /** Formats a raw Prisma User row into the public student shape. */
+  private formatStudent(user: {
+    id: string;
+    studentId: string | null;
+    phone: string;
+    role: string;
+    batchNo: string | null;
+    fullName: string | null;
+    courseName: string | null;
+    courseFee: number | null;
+    fatherName: string | null;
+    motherName: string | null;
+    presentAddress: string | null;
+    permanentAddress: string | null;
+    occupation: string | null;
+    guardianPhone: string | null;
+    email: string | null;
+    nidNumber: string | null;
+    birthRegistrationNumber: string | null;
+    studentPhoto: string | null;
+    studentNidFrontImage: string | null;
+    studentNidBackImage: string | null;
+    guardianNidFrontImage: string | null;
+    guardianNidBackImage: string | null;
+    createdAt: Date;
+  }) {
     return {
       id: user.id,
-      customUserId: user.customUserId,
+      studentId: user.studentId,
       phone: user.phone,
       role: user.role,
       batchNo: user.batchNo,
@@ -141,39 +232,6 @@ export class AuthService {
       createdAt: user.createdAt,
     };
   }
-
-  /**
-   * Shared projection for list endpoints.
-   *
-   * `passwordHash` is NEVER selected - returning it would leak every account's
-   * credentials to the admin panel and into any client bundle that renders the
-   * response. Fields are listed explicitly rather than spreading the row.
-   */
-  private static readonly LIST_SELECT = {
-    id: true,
-    customUserId: true,
-    phone: true,
-    role: true,
-    createdAt: true,
-    batchNo: true,
-    fullName: true,
-    courseName: true,
-    courseFee: true,
-    fatherName: true,
-    motherName: true,
-    presentAddress: true,
-    permanentAddress: true,
-    occupation: true,
-    guardianPhone: true,
-    email: true,
-    nidNumber: true,
-    birthRegistrationNumber: true,
-    studentPhoto: true,
-    studentNidFrontImage: true,
-    studentNidBackImage: true,
-    guardianNidFrontImage: true,
-    guardianNidBackImage: true,
-  } as const;
 
   /** All students, newest first — includes totalPaid aggregated from payments. */
   async listStudents() {
@@ -222,9 +280,13 @@ export class AuthService {
    * explicitly empty/whitespace string CLEARS it (stored as NULL). This is what
    * lets the admin form submit every field every time without blanking the
    * ones they left alone.
+   *
+   * If `batchNo` is changed, a new `studentId` is automatically generated for
+   * the new batch (same {batchNo}{serial} format as on create), so the ID
+   * always reflects the student's current batch.
    */
   async updateStudent(id: string, dto: UpdateStudentDto) {
-    await this.findStudentOrThrow(id);
+    const current = await this.findStudentOrThrow(id);
 
     const data: Record<string, unknown> = {};
     const source = dto as unknown as Record<string, unknown>;
@@ -254,11 +316,62 @@ export class AuthService {
       data.passwordHash = await bcrypt.hash(phone, 10);
     }
 
-    return this.prisma.user.update({
+    // If batchNo is being changed, regenerate studentId for the new batch so
+    // that the ID always starts with the correct batch number.
+    if (dto.batchNo !== undefined) {
+      const newBatchNo =
+        typeof dto.batchNo === 'string' && dto.batchNo.trim().length > 0
+          ? dto.batchNo.trim()
+          : null;
+
+      const batchChanged = newBatchNo !== (current.batchNo ?? null);
+
+      if (batchChanged) {
+        if (newBatchNo) {
+          // Find the highest existing serial for the new batch (excluding this
+          // student's current id so a re-assignment to same batch doesn't skip).
+          const prefix = `${newBatchNo}-`;
+          const existing = await this.prisma.user.findMany({
+            where: {
+              role: Role.STUDENT,
+              studentId: { startsWith: prefix },
+              NOT: { id },
+            },
+            select: { studentId: true },
+          });
+
+          let maxSerial = 0;
+          for (const row of existing) {
+            if (!row.studentId) continue;
+            const suffix = row.studentId.slice(prefix.length);
+            const n = parseInt(suffix, 10);
+            if (!isNaN(n) && n > maxSerial) maxSerial = n;
+          }
+
+          const nextSerial = maxSerial + 1;
+          const serialStr =
+            nextSerial < 10 ? `0${nextSerial}` : `${nextSerial}`;
+          data.studentId = `${prefix}${serialStr}`;
+        } else {
+          // batchNo cleared → clear studentId too
+          data.studentId = null;
+        }
+      }
+    }
+
+    const updated = await this.prisma.user.update({
       where: { id },
       data,
-      select: AuthService.LIST_SELECT,
+      select: {
+        ...AuthService.LIST_SELECT,
+        payments: { select: { amount: true } },
+      },
     });
+    const { payments, ...rest } = updated;
+    return {
+      ...rest,
+      totalPaid: payments.reduce((sum, p) => sum + p.amount, 0),
+    };
   }
 
   /**

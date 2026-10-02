@@ -6,6 +6,7 @@ import { SettingsModule } from './settings/settings.module';
 import { ContactModule } from './contact/contact.module';
 import { UploadModule } from './upload/upload.module';
 import { PaymentModule } from './payment/payment.module';
+import { BatchModule } from './batch/batch.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { PaymentModule } from './payment/payment.module';
     ContactModule,
     UploadModule,
     PaymentModule,
+    BatchModule,
   ],
 })
 export class AppModule {}
