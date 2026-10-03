@@ -4,31 +4,33 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateBatchDto } from './dto/create-batch.dto';
+import { CourseName, CreateBatchDto } from './dto/create-batch.dto';
 
 @Injectable()
 export class BatchService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** All batches, ordered numerically by name (1, 2, 3, …, 10, 11, …). */
-  async list() {
+  /** All batches, optionally filtered by courseName, ordered numerically. */
+  async list(courseName?: CourseName) {
     const batches = await this.prisma.batch.findMany({
+      where: courseName ? { courseName } : undefined,
       orderBy: { name: 'asc' },
     });
-    // Sort numerically since the column is a string.
     return batches.sort((a, b) => Number(a.name) - Number(b.name));
   }
 
-  /** Creates a batch. Rejects duplicates. */
+  /** Creates a batch. Rejects duplicate name+course combinations. */
   async create(dto: CreateBatchDto) {
     const existing = await this.prisma.batch.findUnique({
-      where: { name: dto.name },
+      where: { name_courseName: { name: dto.name, courseName: dto.courseName } },
     });
     if (existing) {
-      throw new ConflictException(`Batch ${dto.name} already exists.`);
+      throw new ConflictException(
+        `Batch ${dto.name} already exists for ${dto.courseName}.`,
+      );
     }
     return this.prisma.batch.create({
-      data: { name: dto.name },
+      data: { name: dto.name, courseName: dto.courseName },
     });
   }
 
@@ -43,8 +45,8 @@ export class BatchService {
   }
 
   /**
-   * All students belonging to the given batch (matched on batchNo == batch.name).
-   * Returns the same shape as the general student list.
+   * All students belonging to the given batch.
+   * Optionally filtered to only students of a specific course.
    */
   async listStudents(id: string) {
     const batch = await this.prisma.batch.findUnique({ where: { id } });
@@ -53,7 +55,11 @@ export class BatchService {
     }
 
     const students = await this.prisma.user.findMany({
-      where: { role: 'STUDENT', batchNo: batch.name },
+      where: {
+        role: 'STUDENT',
+        batchNo: batch.name,
+        courseName: batch.courseName,
+      },
       select: {
         id: true,
         studentId: true,

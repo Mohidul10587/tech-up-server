@@ -84,19 +84,24 @@ model Setting {
   address   String?
   phone     String?
   email     String?
-  // Course fees in taka. Snapshotted onto the student at enrolment time.
-  courseFeesMobileRepairing Int?
-  courseFeesEnglishSpeaking Int?
+  // Course info stored as JSON objects.
+  // Each object: { name, slug, durationMonths, regularFee, presentFee, description }
+  mobileRepairingCourse Json?
+  englishSpeakingCourse Json?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Batch {
-  id        String   @id @default(cuid())
-  /// The batch identifier shown to users, e.g. "1", "2", "10". Must be unique.
-  name      String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  /// The batch identifier shown to users, e.g. "1", "2", "10". Must be unique per course.
+  name       String
+  /// Which course this batch belongs to.
+  courseName String   @default("Mobile Repairing")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([name, courseName])
 }
 
 model Payment {

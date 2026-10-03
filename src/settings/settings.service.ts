@@ -1,8 +1,15 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 
 const SINGLETON_ID = 'singleton';
+
+// Prisma requires `Prisma.JsonNull` (not plain `null`) to explicitly store
+// NULL in a nullable Json column.
+function jsonOrNull(value: object | undefined): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+  return value !== undefined ? (value as Prisma.InputJsonValue) : Prisma.JsonNull;
+}
 
 @Injectable()
 export class SettingsService {
@@ -24,16 +31,16 @@ export class SettingsService {
         address: dto.address ?? null,
         phone: dto.phone ?? null,
         email: dto.email ?? null,
-        courseFeesMobileRepairing: dto.courseFeesMobileRepairing ?? null,
-        courseFeesEnglishSpeaking: dto.courseFeesEnglishSpeaking ?? null,
+        mobileRepairingCourse: jsonOrNull(dto.mobileRepairingCourse),
+        englishSpeakingCourse: jsonOrNull(dto.englishSpeakingCourse),
       },
       create: {
         id: SINGLETON_ID,
         address: dto.address ?? null,
         phone: dto.phone ?? null,
         email: dto.email ?? null,
-        courseFeesMobileRepairing: dto.courseFeesMobileRepairing ?? null,
-        courseFeesEnglishSpeaking: dto.courseFeesEnglishSpeaking ?? null,
+        mobileRepairingCourse: jsonOrNull(dto.mobileRepairingCourse),
+        englishSpeakingCourse: jsonOrNull(dto.englishSpeakingCourse),
       },
     });
   }

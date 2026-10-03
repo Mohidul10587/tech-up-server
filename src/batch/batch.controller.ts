@@ -6,11 +6,12 @@ import {
   Headers,
   Param,
   Post,
+  Query,
   UnauthorizedException,
 } from '@nestjs/common';
 import { BatchService } from './batch.service';
 import { AuthService } from '../auth/auth.service';
-import { CreateBatchDto } from './dto/create-batch.dto';
+import { CourseName, COURSE_NAMES, CreateBatchDto } from './dto/create-batch.dto';
 
 @Controller('batches')
 export class BatchController {
@@ -25,10 +26,16 @@ export class BatchController {
     await this.auth.getAdminFromToken(token);
   }
 
-  /** Public: the dropdown on the student registration form needs this. */
+  /**
+   * Public: lists all batches, optionally filtered by ?courseName=
+   * The student registration dropdown uses this.
+   */
   @Get()
-  list() {
-    return this.batches.list();
+  list(@Query('courseName') courseName?: string) {
+    const validated = COURSE_NAMES.includes(courseName as CourseName)
+      ? (courseName as CourseName)
+      : undefined;
+    return this.batches.list(validated);
   }
 
   /** Admin-only: creates a batch. */

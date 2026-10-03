@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UnauthorizedException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
@@ -45,13 +46,16 @@ export class AuthController {
     return this.auth.createStudent(dto);
   }
 
-  /** Admin-only: every student. */
+  /** Admin-only: every student, optionally filtered by ?courseName= */
   @Get('students')
-  async listStudents(@Headers('authorization') authorization?: string) {
+  async listStudents(
+    @Query('courseName') courseName?: string,
+    @Headers('authorization') authorization?: string,
+  ) {
     const token = authorization?.replace(/^Bearer\s+/i, '');
     if (!token) throw new UnauthorizedException();
     await this.auth.getAdminFromToken(token);
-    return this.auth.listStudents();
+    return this.auth.listStudents(courseName);
   }
 
   /** Admin-only: every user, all roles. */

@@ -90,15 +90,20 @@ export class AuthService {
 
     // Snapshot the current course fee from settings so that a later fee change
     // does not silently alter this student's due balance.
+    // Fee is read from the JSON course objects: mobileRepairingCourse.presentFee
+    // or englishSpeakingCourse.presentFee.
     let courseFee: number | undefined;
     if (profile.courseName) {
       const settings = await this.settings.get();
-      if ('courseFeesMobileRepairing' in settings) {
-        if (profile.courseName === 'Mobile Repairing' && settings.courseFeesMobileRepairing) {
-          courseFee = settings.courseFeesMobileRepairing;
-        } else if (profile.courseName === 'English Speaking' && settings.courseFeesEnglishSpeaking) {
-          courseFee = settings.courseFeesEnglishSpeaking;
-        }
+      const courseJson =
+        profile.courseName === 'Mobile Repairing'
+          ? (settings as Record<string, unknown>).mobileRepairingCourse
+          : profile.courseName === 'English Speaking'
+            ? (settings as Record<string, unknown>).englishSpeakingCourse
+            : undefined;
+      if (courseJson && typeof courseJson === 'object' && courseJson !== null) {
+        const fee = (courseJson as Record<string, unknown>).presentFee;
+        if (typeof fee === 'number' && fee > 0) courseFee = fee;
       }
     }
 
@@ -233,10 +238,13 @@ export class AuthService {
     };
   }
 
-  /** All students, newest first — includes totalPaid aggregated from payments. */
-  async listStudents() {
+  /** All students, optionally filtered by courseName, newest first. */
+  async listStudents(courseName?: string) {
     const students = await this.prisma.user.findMany({
-      where: { role: Role.STUDENT },
+      where: {
+        role: Role.STUDENT,
+        ...(courseName ? { courseName } : {}),
+      },
       select: {
         ...AuthService.LIST_SELECT,
         payments: { select: { amount: true } },
