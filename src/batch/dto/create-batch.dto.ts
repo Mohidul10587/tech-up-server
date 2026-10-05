@@ -1,7 +1,9 @@
 import { IsIn, IsNotEmpty, IsString, Matches } from 'class-validator';
+import { COURSE_NAMES } from '../../common/course-names';
+import type { CourseName } from '../../common/course-names';
 
-export const COURSE_NAMES = ['Mobile Repairing', 'English Speaking'] as const;
-export type CourseName = (typeof COURSE_NAMES)[number];
+export { COURSE_NAMES };
+export type { CourseName };
 
 export class CreateBatchDto {
   /**

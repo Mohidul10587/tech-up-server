@@ -9,12 +9,13 @@ import {
   ValidatorConstraint,
   ValidatorConstraintInterface,
 } from 'class-validator';
+import { COURSE_NAMES } from '../../common/course-names';
+import type { CourseName } from '../../common/course-names';
+
+export { COURSE_NAMES };
+export type { CourseName };
 
 const IDENTIFIER_FIELDS = ['nidNumber', 'birthRegistrationNumber'] as const;
-
-/** The only courses currently offered by the training centre. */
-export const COURSE_NAMES = ['Mobile Repairing', 'English Speaking'] as const;
-export type CourseName = (typeof COURSE_NAMES)[number];
 
 const IDENTIFIER_LABELS: Record<string, string> = {
   nidNumber: 'NID Number',

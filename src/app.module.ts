@@ -3,7 +3,6 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { SettingsModule } from './settings/settings.module';
-import { ContactModule } from './contact/contact.module';
 import { UploadModule } from './upload/upload.module';
 import { PaymentModule } from './payment/payment.module';
 import { BatchModule } from './batch/batch.module';
@@ -14,7 +13,6 @@ import { BatchModule } from './batch/batch.module';
     PrismaModule,
     AuthModule,
     SettingsModule,
-    ContactModule,
     UploadModule,
     PaymentModule,
     BatchModule,
