@@ -22,7 +22,7 @@ export type StudentImageField = (typeof STUDENT_IMAGE_FIELDS)[number];
 /** Response shape: `{ studentPhoto: "https://...", ... }` (absent if skipped). */
 export type StudentImageUrls = Partial<Record<StudentImageField, string>>;
 
-const ALLOWED_MIME_TYPES = new Set([
+export const ALLOWED_MIME_TYPES = new Set([
   'image/jpeg',
   'image/jpg',
   'image/png',

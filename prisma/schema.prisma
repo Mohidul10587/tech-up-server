@@ -88,6 +88,9 @@ model Setting {
   // Each object: { name, slug, durationMonths, regularFee, presentFee, description }
   mobileRepairingCourse Json?
   englishSpeakingCourse Json?
+  /// Stored URL of the uploaded site logo (e.g. /uploads/logo.png or a CDN URL).
+  /// NULL means no logo has been uploaded yet; the UI falls back to the text mark.
+  logoUrl   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

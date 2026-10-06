@@ -4,6 +4,7 @@ import {
   IsObject,
   IsOptional,
   IsString,
+  IsUrl,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -50,6 +51,13 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsEmail()
   email?: string;
+
+  /** URL of the uploaded logo. Relative paths (e.g. /uploads/logo.png) and
+   *  absolute CDN URLs are both accepted. Omitting this field leaves the
+   *  existing logo untouched. */
+  @IsOptional()
+  @IsString()
+  logoUrl?: string;
 
   @IsOptional()
   @IsObject()

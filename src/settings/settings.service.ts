@@ -23,14 +23,29 @@ export class SettingsService {
     return row ?? { id: SINGLETON_ID };
   }
 
-  /** Creates or fully updates the singleton settings row. */
+  /** Creates or fully updates the singleton settings row.
+   *
+   * IMPORTANT: `logoUrl` is only updated when explicitly provided in the DTO.
+   * Omitting it preserves the existing value so a regular settings save never
+   * accidentally deletes the uploaded logo.
+   */
   async update(dto: UpdateSettingsDto) {
+    // Read existing row so we can fall back to its logoUrl when the DTO omits it.
+    const existing = await this.prisma.setting.findUnique({
+      where: { id: SINGLETON_ID },
+      select: { logoUrl: true },
+    });
+
+    const logoUrl =
+      dto.logoUrl !== undefined ? dto.logoUrl : (existing?.logoUrl ?? null);
+
     return this.prisma.setting.upsert({
       where: { id: SINGLETON_ID },
       update: {
         address: dto.address ?? null,
         phone: dto.phone ?? null,
         email: dto.email ?? null,
+        logoUrl,
         mobileRepairingCourse: jsonOrNull(dto.mobileRepairingCourse),
         englishSpeakingCourse: jsonOrNull(dto.englishSpeakingCourse),
       },
@@ -39,6 +54,7 @@ export class SettingsService {
         address: dto.address ?? null,
         phone: dto.phone ?? null,
         email: dto.email ?? null,
+        logoUrl,
         mobileRepairingCourse: jsonOrNull(dto.mobileRepairingCourse),
         englishSpeakingCourse: jsonOrNull(dto.englishSpeakingCourse),
       },

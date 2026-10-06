@@ -36,4 +36,13 @@ export class StorageService {
 
     return urls;
   }
+
+  /** Uploads a single file under the given storage key and returns its public URL. */
+  async uploadSingle(file: Express.Multer.File, key: string): Promise<string> {
+    return this.provider.upload({
+      buffer: file.buffer,
+      contentType: file.mimetype,
+      key,
+    });
+  }
 }
